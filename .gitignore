@@ -1,0 +1,7 @@
+sync.db
+__pycache__/
+*.pyc
+.DS_Store
+m1.png
+m_iphone.png
+m_pub.png

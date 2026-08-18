@@ -1,0 +1,30 @@
+# Render Blueprint —— 一键部署「王粉粉选题池」到常驻服务器
+#
+# 部署步骤：
+#   1. 把本目录（含 server.py / turso.py / 选题库.html / requirements.txt）推到 GitHub
+#   2. 打开 https://dashboard.render.com → New → Blueprint → 选择你的仓库
+#   3. 点击 Deploy，免费额度即可运行（代码常驻，首次访问有约 30 秒冷启动）
+#   4. 想让数据「永远不丢」，二选一：
+#      方案A 免费：在 Environment 里设置 TURSO_URL 与 TURSO_TOKEN（申请免费 Turso 数据库，见 DEPLOY.md）
+#                —— 数据自动落到云端 SQLite，永不丢失，且与本机/任何平台互通
+#      方案B 付费：把 plan 改成 starter 并启用下方 disk（持久磁盘），DATA_DIR 指向 /data
+#
+# 不设置 TURSO_* 时，后端默认用本地 SQLite（/data/sync.db 或 ./sync.db），适合自测。
+
+services:
+  - type: web
+    name: wff-topic-pool
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 1 -b 0.0.0.0:$PORT server:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DATA_DIR
+        value: /data
+    # 付费持久化方案：把上面 plan 改为 starter，并取消下面 disk 注释
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1
