@@ -5,6 +5,9 @@ from turso import TursoDB
 
 app = Flask(__name__)
 
+# 项目根目录（= server.py 所在目录）。本地沙箱是 /workspace，Render 上是 /opt/render/project/src，都拿这个常量就行
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
 @app.after_request
 def add_cors(resp):
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -12,7 +15,7 @@ def add_cors(resp):
     resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     return resp
 
-DB_DIR = os.environ.get('DATA_DIR', '/workspace')
+DB_DIR = os.environ.get('DATA_DIR') or './data'
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, 'sync.db')
 
@@ -68,27 +71,27 @@ def health():
 
 @app.route('/')
 def index():
-    return send_from_directory('/workspace', 'index.html')
+    return send_from_directory(ROOT, 'index.html')
 
 @app.route('/manifest.webmanifest')
 def manifest():
-    return send_from_directory('/workspace', 'manifest.webmanifest'), {'Content-Type': 'application/manifest+json'}
+    return send_from_directory(ROOT, 'manifest.webmanifest'), {'Content-Type': 'application/manifest+json'}
 
 @app.route('/sw.js')
 def sw():
-    return send_from_directory('/workspace', 'sw.js'), {'Content-Type': 'application/javascript', 'Cache-Control': 'no-cache'}
+    return send_from_directory(ROOT, 'sw.js'), {'Content-Type': 'application/javascript', 'Cache-Control': 'no-cache'}
 
 @app.route('/icon-192.png')
 def icon192():
-    return send_from_directory('/workspace', 'icon-192.png'), {'Content-Type': 'image/png'}
+    return send_from_directory(ROOT, 'icon-192.png'), {'Content-Type': 'image/png'}
 
 @app.route('/icon-512.png')
 def icon512():
-    return send_from_directory('/workspace', 'icon-512.png'), {'Content-Type': 'image/png'}
+    return send_from_directory(ROOT, 'icon-512.png'), {'Content-Type': 'image/png'}
 
 @app.route('/apple-touch-icon.png')
 def apple_icon():
-    return send_from_directory('/workspace', 'apple-touch-icon.png'), {'Content-Type': 'image/png'}
+    return send_from_directory(ROOT, 'apple-touch-icon.png'), {'Content-Type': 'image/png'}
 
 @app.route('/api/room/<room>', methods=['GET', 'PUT', 'OPTIONS'])
 def room_api(room):
@@ -231,8 +234,8 @@ def summarize_api():
     d = request.get_json(force=True) or {}
     url = (d.get('url') or '').strip()
     usertext = (d.get('text') or '').strip()
-    api_base = (d.get('apiBase') or 'https://api.deepseek.com/v1/chat/completions').strip()
-    model = (d.get('model') or 'deepseek-chat').strip()
+    api_base = (d.get('apiBase') or 'https://api.siliconflow.cn/v1/chat/completions').strip()
+    model = (d.get('model') or 'deepseek-ai/DeepSeek-V3').strip()
     api_key = (d.get('apiKey') or '').strip()
     fetched = fetch_page(url) if url else {'title': '', 'text': '', 'error': ''}
     if not api_key:
