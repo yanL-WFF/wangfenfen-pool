@@ -35,9 +35,14 @@ def init_db():
         name TEXT PRIMARY KEY, topics TEXT NOT NULL DEFAULT '[]',
         pwd_hash TEXT DEFAULT '', updated REAL DEFAULT 0)''')
     # 兼容旧版本无 pwd_hash 列的表，自动补列，保留已有数据
+    # 用 try/except 包住：Turso 在某些 PRAGMA/ALTER 状态不一致时会报 duplicate column，
+    # 但实际列已存在，无需再添加；这里吞掉异常，保证 init_db 幂等。
     cols = [r[1] for r in db.execute("PRAGMA table_info(rooms)")]
     if 'pwd_hash' not in cols:
-        db.execute("ALTER TABLE rooms ADD COLUMN pwd_hash TEXT DEFAULT ''")
+        try:
+            db.execute("ALTER TABLE rooms ADD COLUMN pwd_hash TEXT DEFAULT ''")
+        except Exception:
+            pass
     db.execute('''CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, ts REAL,
         user TEXT, action TEXT, detail TEXT)''')
