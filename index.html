@@ -256,6 +256,13 @@
     <div class="field"><label>粘贴小红书 / 抖音链接</label><input id="l-url" placeholder="https://www.xiaohongshu.com/..." oninput="onUrl()"></div>
     <div class="field"><label>链接内容（可选，粘贴标题/正文 → 自动生成概括）</label><textarea id="l-text" placeholder="把笔记的标题或正文粘这里"></textarea></div>
     <button class="btn ghost" style="width:100%;margin-bottom:10px" onclick="runDetect()">✨ 自动识别（选题库 + 剪辑分类）</button>
+    <details class="ai-cfg" id="aiInline" open>
+      <summary>🤖 AI 概括配置（填一次，本机记住）</summary>
+      <div class="field"><label>API Key *（必填）</label><input id="aiKey2" type="password" placeholder="sk-...（DeepSeek / 硅基流动）"></div>
+      <div class="field"><label>API 地址</label><input id="aiBase2" placeholder="https://api.siliconflow.cn/v1/chat/completions"></div>
+      <div class="field"><label>模型</label><input id="aiModel2" placeholder="deepseek-ai/DeepSeek-V3"></div>
+      <div class="hint">支持 DeepSeek / 硅基流动等 OpenAI 兼容接口。Key 只存在你本机，不会同步给他人。没 Key 时点概括只能用抓取标题。</div>
+    </details>
     <button class="btn" style="width:100%;margin-bottom:14px" onclick="aiSummary()" id="aiBtn">🤖 AI 概括 + 抓取链接</button>
     <div class="result" id="lResult"></div>
     <div class="field">
@@ -305,8 +312,8 @@
     <div style="border-top:1px solid var(--line);margin:18px 0 14px"></div>
     <details class="ai-cfg">
       <summary>🤖 AI 一句话总结配置（仅存本机）</summary>
-      <div class="field"><label>API 地址</label><input id="aiBase" placeholder="https://api.deepseek.com/v1/chat/completions"></div>
-      <div class="field"><label>模型</label><input id="aiModel" placeholder="deepseek-chat"></div>
+      <div class="field"><label>API 地址</label><input id="aiBase" placeholder="https://api.siliconflow.cn/v1/chat/completions"></div>
+      <div class="field"><label>模型</label><input id="aiModel" placeholder="deepseek-ai/DeepSeek-V3"></div>
       <div class="field"><label>API Key</label><input id="aiKey" type="password" placeholder="sk-...（用于生成链接一句话概括）"></div>
       <div class="hint">支持 DeepSeek / 硅基流动等 OpenAI 兼容接口。Key 只存在你本机，不会同步给他人。</div>
       <button class="btn ghost sm" style="width:100%" onclick="saveAiCfg()">保存 AI 配置</button>
@@ -574,6 +581,7 @@ function openLink(){
   $('lResult').className='result';
   $('incMain').checked=true; $('incClip').checked=true;
   renderLibChips('catChipsMain','main'); renderLibChips('catChipsClip','clip');
+  syncAiInline();
   show('sLink'); $('l-url').focus();
 }
 function renderLibChips(box, libKey){
@@ -623,19 +631,27 @@ function renderActivity(online, log){
   }).join('') || '<div class="lg dim">还没有动态</div>';
   $('actLog').innerHTML=items;
 }
+function syncAiInline(){
+  $('aiKey2').value = aiCfg.key||'';
+  $('aiBase2').value = aiCfg.base||'https://api.siliconflow.cn/v1/chat/completions';
+  $('aiModel2').value = aiCfg.model||'deepseek-ai/DeepSeek-V3';
+}
 async function aiSummary(){
   const u=$('l-url').value.trim(), txt=$('l-text').value.trim();
   if(!u&&!txt){ alert('请先粘贴链接或内容'); return; }
+  // 读取内联配置并保存（填过就记住）
+  const k=$('aiKey2').value.trim(), b=$('aiBase2').value.trim(), m=$('aiModel2').value.trim();
+  if(k||b||m){ aiCfg={base:b||'https://api.siliconflow.cn/v1/chat/completions', model:m||'deepseek-ai/DeepSeek-V3', key:k}; safeLsSet('wf_ai',JSON.stringify(aiCfg)); }
   const btn=$('aiBtn'); btn.disabled=true; const old=btn.textContent; btn.textContent='⏳ AI 抓取并概括中…';
   try{
-    const r=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u,text:txt,apiBase:aiCfg.base||'https://api.deepseek.com/v1/chat/completions',model:aiCfg.model||'deepseek-chat',apiKey:aiCfg.key||''})});
+    const r=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u,text:txt,apiBase:aiCfg.base||'https://api.siliconflow.cn/v1/chat/completions',model:aiCfg.model||'deepseek-ai/DeepSeek-V3',apiKey:aiCfg.key||''})});
     const d=await r.json();
     if(!d.ok){ alert(d.error||'AI 概括失败'); }
     else{
       if(d.fetchedTitle && !$('l-note').value) $('l-note').value=d.fetchedTitle+(d.fetchedText?('\n'+d.fetchedText.slice(0,300)):'');
       if(d.summary) $('l-summary').value=d.summary;
       runDetect();
-      if(d.noKey) toast('未配置 AI Key，已用抓取标题概括');
+      if(d.noKey){ toast('请先在上方填写 API Key 再点 AI 概括'); document.getElementById('aiInline').open=true; $('aiKey2').focus(); }
       else toast('已生成 AI 一句话概括');
     }
   }catch(e){ alert('请求失败：'+e); }
@@ -651,8 +667,8 @@ function updateSyncTag(){
   if(room){el.textContent='同步中：'+room;el.classList.add('on');}
   else{el.textContent='本地模式';el.classList.remove('on');}
 }
-function openSetting(){$('roomInput').value=room||'';$('pwdInput').value=pwd||'';$('nameInput').value=userName||'';$('aiBase').value=aiCfg.base||'https://api.deepseek.com/v1/chat/completions';$('aiModel').value=aiCfg.model||'deepseek-chat';$('aiKey').value=aiCfg.key||'';updateRoomStatus();show('sSetting');}
-function saveAiCfg(){aiCfg={base:$('aiBase').value.trim(),model:$('aiModel').value.trim(),key:$('aiKey').value.trim()};safeLsSet('wf_ai',JSON.stringify(aiCfg));toast('AI 配置已保存');}
+function openSetting(){$('roomInput').value=room||'';$('pwdInput').value=pwd||'';$('nameInput').value=userName||'';$('aiBase').value=aiCfg.base||'https://api.siliconflow.cn/v1/chat/completions';$('aiModel').value=aiCfg.model||'deepseek-ai/DeepSeek-V3';$('aiKey').value=aiCfg.key||'';updateRoomStatus();show('sSetting');}
+function saveAiCfg(){aiCfg={base:$('aiBase').value.trim(),model:$('aiModel').value.trim(),key:$('aiKey').value.trim()};safeLsSet('wf_ai',JSON.stringify(aiCfg));syncAiInline();toast('AI 配置已保存');}
 function updateRoomStatus(){
   const st=$('roomStatus');
   if(room){st.textContent='当前：已连接「'+room+'」· 数据每 3 秒同步';st.className='status on';}

@@ -12,9 +12,7 @@ def add_cors(resp):
     resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     return resp
 
-DB_DIR = os.environ.get('DATA_DIR') or './data'
-os.makedirs(DB_DIR, exist_ok=True)
-
+DB_DIR = os.environ.get('DATA_DIR', '/workspace')
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, 'sync.db')
 
