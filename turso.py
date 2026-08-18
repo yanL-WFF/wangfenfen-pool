@@ -45,7 +45,12 @@ class TursoCursor:
 
 class TursoDB:
     def __init__(self, url, token):
-        self.url = url.rstrip('/')
+        # Turso 控制台给的 URL 是 libsql://，但 urllib 只认 https://，
+        # 这里把 libsql:// 转成 https://，保持 wire 协议不变。
+        url = (url or '').strip().rstrip('/')
+        if url.startswith('libsql://'):
+            url = 'https://' + url[len('libsql://'):]
+        self.url = url
         self.token = token
 
     @staticmethod
