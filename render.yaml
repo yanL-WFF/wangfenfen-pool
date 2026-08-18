@@ -22,7 +22,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.11"
       - key: DATA_DIR
-        value: /data
+        value: ./data
     # 付费持久化方案：把上面 plan 改为 starter，并取消下面 disk 注释
     # disk:
     #   name: data
